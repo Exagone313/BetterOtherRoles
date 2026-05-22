@@ -29,7 +29,13 @@
         </Reference>
     </ItemGroup>
     
-    <Target Name="CopyPlugins" AfterTargets="AfterBuild">
-        <Copy SourceFiles="$(TargetPath)" DestinationFolder="E:\SteamLibrary\steamapps\common\Among Us - BOR-Update\BepInEx\plugins\BetterOtherRoles" />
+    <PropertyGroup>
+        <AmongUsPluginsDir Condition=" '$(AmongUsPluginsDir)' == '' ">E:\SteamLibrary\steamapps\common\Among Us - BOR-Update\BepInEx\plugins\BetterOtherRoles</AmongUsPluginsDir>
+    </PropertyGroup>
+
+    <Target Name="CopyPlugins" AfterTargets="AfterBuild"
+            Condition=" Exists('$(AmongUsPluginsDir)') ">
+        <Message Importance="high" Text="Deploying $(TargetFileName) -&gt; $(AmongUsPluginsDir)" />
+        <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(AmongUsPluginsDir)" />
     </Target>
 </Project>

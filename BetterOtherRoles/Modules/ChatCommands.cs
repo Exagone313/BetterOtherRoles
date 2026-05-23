@@ -21,6 +21,7 @@ namespace BetterOtherRoles.Modules {
                     __instance.Chat.SetVisible(true);
                 }
                 UIManager.VersionHandshakePanel?.UpdateChecks();
+                VersionHandshake.ShareIfStale();
             }
         }
 

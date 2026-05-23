@@ -5,11 +5,16 @@ using BetterOtherRoles.Modules;
 using BetterOtherRoles.Patches;
 using BetterOtherRoles.Players;
 using Hazel;
+using UnityEngine;
 
 namespace BetterOtherRoles.Eno;
 
 public class VersionHandshake
 {
+    public const float HandshakeGracePeriodSeconds = 5f;
+
+    public const float MinRebroadcastIntervalSeconds = 2f;
+
     public static VersionHandshake Instance
     {
         get
@@ -26,6 +31,10 @@ public class VersionHandshake
     }
     private static VersionHandshake _instance { get; set; }
     private static readonly Dictionary<int, VersionHandshake> AllVersions = new();
+
+    private static readonly Dictionary<int, float> FirstObservedAt = new();
+
+    private static float _lastShareAt = float.NegativeInfinity;
     
     public Version Version { get; private set; }
     public int ClientId { get; private set; }
@@ -43,10 +52,25 @@ public class VersionHandshake
         return Instance.ClientId == clientId || AllVersions.ContainsKey(clientId);
     }
 
+    public static bool IsWithinGracePeriod(int clientId)
+    {
+        if (Has(clientId)) return false;
+        if (!FirstObservedAt.TryGetValue(clientId, out var firstSeen))
+        {
+            // We've never observed this client before. Start the clock now;
+            // the panel will treat them as in-grace this frame.
+            FirstObservedAt[clientId] = Time.time;
+            return true;
+        }
+        return Time.time - firstSeen < HandshakeGracePeriodSeconds;
+    }
+
     public static void Clear()
     {
         Instance = null;
         AllVersions.Clear();
+        FirstObservedAt.Clear();
+        _lastShareAt = float.NegativeInfinity;
     }
 
     public static void HandleRpcHandshake(MessageReader reader)
@@ -74,10 +98,16 @@ public class VersionHandshake
             };
 
             AllVersions[handshake.ClientId] = handshake;
+
+            // Ack-style retry: if we just learned about a peer who has the mod,
+            // it's likely they just joined or just loaded into the lobby. If
+            // our last outbound broadcast was a while ago they may not have
+            // received it, so re-broadcast (rate-limited).
+            ShareIfStale();
         }
         catch (Exception e)
         {
-            BetterOtherRolesPlugin.Logger.LogWarning($"Legacy version handshake cannot be parsed, error: {e.ToString()}");
+            BetterOtherRolesPlugin.Logger.LogWarning($"Legacy version handshake cannot be parsed, error: {e}");
         }
     }
 
@@ -103,6 +133,14 @@ public class VersionHandshake
         writer.Write(Guid.ToString());
         writer.Write(JsonSerializer.Serialize(Flags));
         AmongUsClient.Instance.FinishRpcImmediately(writer);
+        _lastShareAt = Time.time;
+    }
+
+    public static void ShareIfStale()
+    {
+        if (CachedPlayer.LocalPlayer == null || !CachedPlayer.LocalPlayer.PlayerControl) return;
+        if (Time.time - _lastShareAt < MinRebroadcastIntervalSeconds) return;
+        Instance.Share();
     }
 
     public bool GuidMatch()

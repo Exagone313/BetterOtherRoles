@@ -61,24 +61,35 @@ public class VersionHandshakePanel : WrappedPanel
         foreach (var player in CachedPlayer.AllPlayers)
         {
             if (player.Data == null) continue;
-            var clientId = player.PlayerControl.OwnerId;
-            var symbol = Helpers.cs(Palette.ImpostorRed, "✖");
+            var symbol = "";
             var playerName = player.Data.PlayerName;
             var errorMessage = string.Empty;
+            var clientId = player.PlayerControl.OwnerId;
             if (AmongUsClient.Instance.HostId == clientId)
             {
                 playerName = Helpers.cs(Color.magenta, playerName);
             }
             if (!VersionHandshake.Has(clientId))
             {
-                errorMessage = "missing or bad mod";
+                if (VersionHandshake.IsWithinGracePeriod(clientId))
+                {
+                    symbol = Helpers.cs(Color.gray, "…");
+                    errorMessage = "checking...";
+                }
+                else
+                {
+                    symbol = Helpers.cs(Palette.ImpostorRed, "✖");
+                    errorMessage = "missing or bad mod";
+                }
             }
             else if (!VersionHandshake.Find(clientId).Version.Equals(VersionHandshake.Instance.Version))
             {
+                symbol = Helpers.cs(Palette.ImpostorRed, "✖");
                 errorMessage = $"wrong version (v{VersionHandshake.Find(clientId).Version.ToString()})";
             }
             else if (!VersionHandshake.Find(clientId).GuidMatch())
             {
+                symbol = Helpers.cs(Palette.ImpostorRed, "✖");
                 errorMessage = "wrong build";
             }
             else
@@ -108,7 +119,8 @@ public class VersionHandshakePanel : WrappedPanel
             var line = $"{symbol} {playerName}";
             if (errorMessage != string.Empty)
             {
-                line += $": {Helpers.cs(Palette.ImpostorRed, errorMessage)}";
+                var color = errorMessage == "checking..." ? Color.gray : Palette.ImpostorRed;
+                line += $": {Helpers.cs(color, errorMessage)}";
             }
 
             text.AppendLine(line);

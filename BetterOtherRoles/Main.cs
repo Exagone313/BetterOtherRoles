@@ -36,8 +36,8 @@ namespace BetterOtherRoles
     {
         public const string Name = "Better Other Roles";
         public const string Id = "betterohterroles.eno.pm";
-        public const string VersionString = "1.7.0";
-        public const int betaNum = 2;
+        public const string VersionString = "1.8.0";
+        public const int betaNum = 1;
         
         public static Version Version = Version.Parse(VersionString);
         internal static BepInEx.Logging.ManualLogSource Logger;

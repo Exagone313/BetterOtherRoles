@@ -70,7 +70,7 @@ namespace BetterOtherRoles.Patches {
         private static GameOverReason gameOverReason;
         public static void Prefix(AmongUsClient __instance, [HarmonyArgument(0)]ref EndGameResult endGameResult) {
             gameOverReason = endGameResult.GameOverReason;
-            if ((int)endGameResult.GameOverReason >= 10) endGameResult.GameOverReason = GameOverReason.ImpostorByKill;
+            if ((int)endGameResult.GameOverReason >= 10) endGameResult.GameOverReason = GameOverReason.ImpostorsByKill;
 
             // Reset zoomed out ghosts
             Helpers.toggleZoom(reset: true);
@@ -85,7 +85,7 @@ namespace BetterOtherRoles.Patches {
                 // "Kill" exiled player if he is not dead
                 try
                 {
-                    var exiledPlayer = ExileController.Instance.exiled.Object;
+                    var exiledPlayer = ExileController.Instance.initData?.networkedPlayer?.Object;
 
                     if (exiledPlayer != null && (Jester.jester == null || Jester.jester.PlayerId != exiledPlayer.PlayerId))
                     {
@@ -515,7 +515,7 @@ namespace BetterOtherRoles.Patches {
             if (totalTasks == 0 || completedTasks < totalTasks) return false;
             
             //__instance.enabled = false;
-            GameManager.Instance.RpcEndGame(GameOverReason.HumansByTask, false);
+            GameManager.Instance.RpcEndGame(GameOverReason.CrewmatesByTask, false);
             return true;
         }
 
@@ -559,13 +559,13 @@ namespace BetterOtherRoles.Patches {
                 GameOverReason endReason;
                 switch (GameData.LastDeathReason) {
                     case DeathReason.Exile:
-                        endReason = GameOverReason.ImpostorByVote;
+                        endReason = GameOverReason.ImpostorsByVote;
                         break;
                     case DeathReason.Kill:
-                        endReason = GameOverReason.ImpostorByKill;
+                        endReason = GameOverReason.ImpostorsByKill;
                         break;
                     default:
-                        endReason = GameOverReason.ImpostorByVote;
+                        endReason = GameOverReason.ImpostorsByVote;
                         break;
                 }
                 GameManager.Instance.RpcEndGame(endReason, false);
@@ -577,16 +577,16 @@ namespace BetterOtherRoles.Patches {
         private static bool CheckAndEndGameForCrewmateWin(ShipStatus __instance, PlayerStatistics statistics) {
             if (HideNSeek.isHideNSeekGM && HideNSeek.timer <= 0 && !HideNSeek.isWaitingTimer) {
                 //__instance.enabled = false;
-                GameManager.Instance.RpcEndGame(GameOverReason.HumansByVote, false);
+                GameManager.Instance.RpcEndGame(GameOverReason.CrewmatesByVote, false);
                 return true;
             }
             if (PropHunt.isPropHuntGM && PropHunt.timer <= 0 && PropHunt.timerRunning) {
-                GameManager.Instance.RpcEndGame(GameOverReason.HumansByVote, false);
+                GameManager.Instance.RpcEndGame(GameOverReason.CrewmatesByVote, false);
                 return true;
             }
             if (statistics.TeamImpostorsAlive == 0 && statistics.TeamJackalAlive == 0) {
                 //__instance.enabled = false;
-                GameManager.Instance.RpcEndGame(GameOverReason.HumansByVote, false);
+                GameManager.Instance.RpcEndGame(GameOverReason.CrewmatesByVote, false);
                 return true;
             }
             return false;
@@ -594,7 +594,7 @@ namespace BetterOtherRoles.Patches {
 
         private static void EndGameForSabotage(ShipStatus __instance) {
             //__instance.enabled = false;
-            GameManager.Instance.RpcEndGame(GameOverReason.ImpostorBySabotage, false);
+            GameManager.Instance.RpcEndGame(GameOverReason.ImpostorsBySabotage, false);
             return;
         }
 

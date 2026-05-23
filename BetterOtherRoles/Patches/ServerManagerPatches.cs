@@ -4,9 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text.Json;
-using System.Threading.Tasks;
-using BepInEx;
 using BepInEx.Unity.IL2CPP.Utils;
 using BetterOtherRoles.Modules;
 using BetterOtherRoles.Utilities.Extensions;
@@ -20,7 +17,8 @@ namespace BetterOtherRoles.Patches;
 [HarmonyPatch(typeof(ServerManager))]
 public static class ServerManagerPatches
 {
-    private static readonly string RegionFileJson = Path.Combine(Helpers.getAssemblyPath(), "Regions.json");
+    private static readonly string RegionFileJson =
+        Path.Combine(Helpers.getAssemblyPath(), "Regions.json");
 
     [HarmonyPatch(nameof(ServerManager.LoadServers))]
     [HarmonyPrefix]
@@ -31,15 +29,14 @@ public static class ServerManagerPatches
             try
             {
                 var jsonServerData = JsonConvert.DeserializeObject<ServerManager.JsonServerData>(
-                    FileIO.ReadAllText(RegionFileJson), new JsonSerializerSettings
-                    {
-                        TypeNameHandling = TypeNameHandling.Auto
-                    });
+                    FileIO.ReadAllText(RegionFileJson),
+                    new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto });
+
                 jsonServerData.CleanAndMerge(CustomRegions.DefaultRegions);
+
                 __instance.AvailableRegions = jsonServerData.Regions;
-                __instance.CurrentRegion =
-                    __instance.AvailableRegions[
-                        jsonServerData.CurrentRegionIdx.Wrap(__instance.AvailableRegions.Length)];
+                __instance.CurrentRegion = __instance.AvailableRegions[
+                    WrapIndex(jsonServerData.CurrentRegionIdx, __instance.AvailableRegions.Length)];
                 __instance.CurrentUdpServer = __instance.CurrentRegion.Servers.ToList().GetOneRandom();
                 __instance.state = UpdateState.Success;
                 __instance.SaveServers();
@@ -64,18 +61,18 @@ public static class ServerManagerPatches
     {
         try
         {
-            FileIO.WriteAllText(RegionFileJson, JsonConvert.SerializeObject(new ServerManager.JsonServerData
-            {
-                CurrentRegionIdx = __instance.AvailableRegions.ToList()
-                    .FindIndex(r => r.Name == __instance.CurrentRegion.Name),
-                Regions = __instance.AvailableRegions
-            }, new JsonSerializerSettings
-            {
-                TypeNameHandling = TypeNameHandling.Auto
-            }));
+            FileIO.WriteAllText(RegionFileJson, JsonConvert.SerializeObject(
+                new ServerManager.JsonServerData
+                {
+                    CurrentRegionIdx = __instance.AvailableRegions.ToList()
+                        .FindIndex(r => r.Name == __instance.CurrentRegion.Name),
+                    Regions = __instance.AvailableRegions,
+                },
+                new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto }));
         }
-        catch
+        catch (Exception ex)
         {
+            BetterOtherRolesPlugin.Logger.LogWarning(ex);
         }
 
         return false;
@@ -86,7 +83,9 @@ public static class ServerManagerPatches
         if (!ServerManager.InstanceExists) yield break;
         var sm = ServerManager.Instance;
         sm.AvailableRegions = CustomRegions.DefaultRegions;
-        var dnsLookup = CustomRegions.DefaultRegions.Select(r => Dns.GetHostAddressesAsync(r.PingServer)).ToList();
+
+        var dnsLookup = CustomRegions.DefaultRegions
+            .Select(r => Dns.GetHostAddressesAsync(r.PingServer)).ToList();
         while (dnsLookup.Any(task => !task.IsCompleted))
         {
             yield return null;
@@ -109,36 +108,45 @@ public static class ServerManagerPatches
 
             if (result == null || result.Length == 0)
             {
-                BetterOtherRolesPlugin.Logger.LogWarning("DNS - no IPs resolved for " + defaultRegion.PingServer);
+                BetterOtherRolesPlugin.Logger.LogWarning(
+                    "DNS - no IPs resolved for " + defaultRegion.PingServer);
+                continue;
             }
-            else
-            {
-                pings.Add(new ServerManager.PingWrapper(defaultRegion, new Ping(result.ToList().GetOneRandom().ToString())));
-            }
+
+            pings.Add(new ServerManager.PingWrapper(
+                defaultRegion, new Ping(result.ToList().GetOneRandom().ToString())));
         }
 
-        for (var timeElapsedSeconds = 0f; pings.Count > 0 && timeElapsedSeconds < 5f && !pings.Any(p => p.Ping.isDone && p.Ping.time >= 0); timeElapsedSeconds += Time.deltaTime)
+        for (var elapsed = 0f;
+             pings.Count > 0 && elapsed < 5f
+                              && !pings.Any(p => p.Ping.isDone && p.Ping.time >= 0);
+             elapsed += Time.deltaTime)
         {
             yield return null;
         }
 
-        var regionInfo = CustomRegions.DefaultRegions.First();
-        var num = int.MaxValue;
+        var bestRegion = CustomRegions.DefaultRegions.First();
+        var bestPing = int.MaxValue;
         foreach (var pingWrapper in pings)
         {
-            if (pingWrapper.Ping.isDone && pingWrapper.Ping.time >= 0)
+            if (pingWrapper.Ping.isDone && pingWrapper.Ping.time >= 0
+                                        && pingWrapper.Ping.time < bestPing)
             {
-                if (pingWrapper.Ping.time < num)
-                {
-                    regionInfo = pingWrapper.Region;
-                    num = pingWrapper.Ping.time;
-                }
+                bestRegion = pingWrapper.Region;
+                bestPing = pingWrapper.Ping.time;
             }
             pingWrapper.Ping.DestroyPing();
         }
-        
-        sm.CurrentRegion = regionInfo.Duplicate();
+
+        sm.CurrentRegion = bestRegion.Duplicate();
         sm.ReselectServer();
         sm.SaveServers();
+    }
+
+    private static int WrapIndex(int idx, int length)
+    {
+        if (length <= 0) return 0;
+        var wrapped = idx % length;
+        return wrapped < 0 ? wrapped + length : wrapped;
     }
 }

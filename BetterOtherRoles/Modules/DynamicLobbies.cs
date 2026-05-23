@@ -45,7 +45,7 @@ namespace BetterOtherRoles.Modules {
         }
         [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.HostGame))]
         public static class InnerNetClientHostPatch {
-            public static void Prefix(InnerNet.InnerNetClient __instance, [HarmonyArgument(0)] GameOptionsData settings) {
+            public static void Prefix(InnerNet.InnerNetClient __instance, [HarmonyArgument(0)] IGameOptions settings) {
                 int maxPlayers;
                 try {
                     maxPlayers = GameOptionsManager.Instance.currentNormalGameOptions.MaxPlayers;
@@ -54,11 +54,11 @@ namespace BetterOtherRoles.Modules {
                     maxPlayers = 15;
                 }
                 DynamicLobbies.LobbyLimit = maxPlayers;
-                settings.MaxPlayers = 15; // Force 15 Player Lobby on Server
+                settings.Cast<NormalGameOptionsV10>().MaxPlayers = 15; // Force 15 Player Lobby on Server
                 DataManager.Settings.Multiplayer.ChatMode = InnerNet.QuickChatModes.FreeChatOrQuickChat;
             }
-            public static void Postfix(InnerNet.InnerNetClient __instance, [HarmonyArgument(0)] GameOptionsData settings) {
-                settings.MaxPlayers = DynamicLobbies.LobbyLimit;
+            public static void Postfix(InnerNet.InnerNetClient __instance, [HarmonyArgument(0)] IGameOptions settings) {
+                settings.Cast<NormalGameOptionsV10>().MaxPlayers = DynamicLobbies.LobbyLimit;
             }
         }
         [HarmonyPatch(typeof(InnerNetClient), nameof(InnerNetClient.JoinGame))]

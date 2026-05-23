@@ -79,8 +79,6 @@ namespace BetterOtherRoles
             ShowChatNotifications = Config.Bind("Custom", "Show Chat Notifications", true);
             GetBetaReleases = Config.Bind("Custom", "Get Beta Releases", false);
             
-            ServerManager.DefaultRegions = new Il2CppReferenceArray<IRegionInfo>(Array.Empty<IRegionInfo>());
-
             DebugMode = Config.Bind("Custom", "Enable Debug Mode", "false");
 
             TORMapOptions.reloadPluginOptions();
@@ -115,7 +113,7 @@ namespace BetterOtherRoles
     }
 
     // Deactivate bans, since I always leave my local testing game and ban myself
-    [HarmonyPatch(typeof(StatsManager), nameof(StatsManager.AmBanned), MethodType.Getter)]
+    [HarmonyPatch(typeof(AmongUs.Data.Player.PlayerBanData), nameof(AmongUs.Data.Player.PlayerBanData.IsBanned), MethodType.Getter)]
     public static class AmBannedPatch
     {
         public static void Postfix(out bool __result)

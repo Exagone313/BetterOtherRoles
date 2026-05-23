@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Hazel;
+using BepInEx.Unity.IL2CPP.Utils;
 using BetterOtherRoles.Players;
 using BetterOtherRoles.Utilities;
 using BetterOtherRoles.CustomGameModes;
@@ -205,28 +206,36 @@ namespace BetterOtherRoles.Patches {
         }
 
 
-        [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.ShowRole))]
+        [HarmonyPatch(typeof(IntroCutscene), nameof(IntroCutscene.CoBegin))]
         class SetUpRoleTextPatch {
             static int seed = 0;
             static public void SetRoleTexts(IntroCutscene __instance) {
-                // Don't override the intro of the vanilla roles
-                List<RoleInfo> infos = RoleInfo.getRoleInfoForPlayer(CachedPlayer.LocalPlayer.PlayerControl);
+                var localPlayer = CachedPlayer.LocalPlayer?.PlayerControl;
+                if (localPlayer == null) return;
+
+                List<RoleInfo> infos = RoleInfo.getRoleInfoForPlayer(localPlayer);
                 RoleInfo roleInfo = infos.Where(info => !info.isModifier).FirstOrDefault();
                 RoleInfo modifierInfo = infos.Where(info => info.isModifier).FirstOrDefault();
 
                 if (EventUtility.isEnabled) {
                     var roleInfos = RoleInfo.allRoleInfos.Where(x => !x.isModifier).ToList();
-                    if (roleInfo.isNeutral) roleInfos.RemoveAll(x => !x.isNeutral);
-                    if (roleInfo.color == Palette.ImpostorRed) roleInfos.RemoveAll(x => x.color != Palette.ImpostorRed);
-                    if (!roleInfo.isNeutral && roleInfo.color != Palette.ImpostorRed) roleInfos.RemoveAll(x => x.color == Palette.ImpostorRed || x.isNeutral);
-                    var rnd = new System.Random(seed);
-                    roleInfo = roleInfos[rnd.Next(roleInfos.Count)];
+                    if (roleInfo != null) {
+                        if (roleInfo.isNeutral) roleInfos.RemoveAll(x => !x.isNeutral);
+                        if (roleInfo.color == Palette.ImpostorRed) roleInfos.RemoveAll(x => x.color != Palette.ImpostorRed);
+                        if (!roleInfo.isNeutral && roleInfo.color != Palette.ImpostorRed) roleInfos.RemoveAll(x => x.color == Palette.ImpostorRed || x.isNeutral);
+                        var rnd = new System.Random(seed);
+                        roleInfo = roleInfos.Count > 0 ? roleInfos[rnd.Next(roleInfos.Count)] : roleInfo;
+                    }
                 }
 
                 __instance.RoleBlurbText.text = "";
                 if (roleInfo != null) {
                     __instance.RoleText.text = roleInfo.name;
                     __instance.RoleText.color = roleInfo.color;
+                    var translator = __instance.RoleText.GetComponent<TextTranslatorTMP>();
+                    if (translator != null) {
+                        translator.TargetText = StringNames.None;
+                    }
                     __instance.RoleBlurbText.text = roleInfo.introDescription;
                     __instance.RoleBlurbText.color = roleInfo.color;
                 }
@@ -245,12 +254,18 @@ namespace BetterOtherRoles.Patches {
                         __instance.RoleBlurbText.text += Helpers.cs(Sheriff.color, $"\nYour Sheriff is {Sheriff.sheriff?.Data?.PlayerName ?? ""}");
                 }
             }
-            public static bool Prefix(IntroCutscene __instance) {
+            [HarmonyPostfix]
+            public static void Postfix(IntroCutscene __instance) {
                 seed = Rnd.Next(5000);
-                FastDestroyableSingleton<HudManager>.Instance.StartCoroutine(Effects.Lerp(1f, new Action<float>((p) => {
+                __instance.StartCoroutine(CoSetRoleTexts(__instance));
+            }
+            [HideFromIl2Cpp]
+            private static System.Collections.IEnumerator CoSetRoleTexts(IntroCutscene __instance) {
+                yield return null; // wait one frame for game to set vanilla text
+                for (var t = 0f; t < 5f; t += Time.deltaTime) {
                     SetRoleTexts(__instance);
-                })));
-                return true;
+                    yield return null;
+                }
             }
         }
 

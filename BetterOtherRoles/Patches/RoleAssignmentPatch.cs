@@ -38,9 +38,9 @@ namespace BetterOtherRoles.Patches {
         }
     } 
 
-    [HarmonyPatch(typeof(GameOptionsData), nameof(GameOptionsData.Validate))]
+    [HarmonyPatch(typeof(LegacyGameOptions), nameof(LegacyGameOptions.Validate))]
     class GameOptionsDataValidatePatch {
-        public static void Postfix(GameOptionsData __instance) {
+        public static void Postfix(LegacyGameOptions __instance) {
             if (TORMapOptions.gameMode == CustomGamemodes.HideNSeek || GameOptionsManager.Instance.CurrentGameOptions.GameMode != GameModes.Normal) return;
             if (TORMapOptions.gameMode == CustomGamemodes.PropHunt)
                 __instance.NumImpostors = CustomOptionHolder.propHuntNumberOfHunters.getQuantity();

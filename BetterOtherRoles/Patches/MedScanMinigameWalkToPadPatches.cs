@@ -1,25 +1,22 @@
 ﻿using System.Collections;
 using System.Linq;
-using BepInEx.Unity.IL2CPP.Utils;
+using BepInEx.Unity.IL2CPP.Utils.Collections;
 using BetterOtherRoles.Modules;
 using HarmonyLib;
 using UnityEngine;
 
 namespace BetterOtherRoles.Patches;
 
-[HarmonyPatch(typeof(MedScanMinigame._WalkToPad_d__16))]
+[HarmonyPatch(typeof(MedScanMinigame), nameof(MedScanMinigame.WalkToPad))]
 public static class MedScanMinigameWalkToPadPatches
 {
     private static CustomOption RandomizeScanPlayerPosition => CustomOptionHolder.RandomizePositionDuringScan;
-    
-    [HarmonyPatch(nameof(MedScanMinigame._WalkToPad_d__16.MoveNext))]
+
     [HarmonyPrefix]
-    private static bool MoveNextPrefix(MedScanMinigame._WalkToPad_d__16 __instance)
+    private static bool Prefix(MedScanMinigame __instance, ref Il2CppSystem.Collections.IEnumerator __result)
     {
         if (!RandomizeScanPlayerPosition.getBool() || !(Helpers.isPolus() || Helpers.isMira() || Helpers.isSkeld() || SubmergedCompatibility.IsSubmerged)) return true;
-        var minigame = __instance.__4__this;
-        minigame.StartCoroutine(WalkToPadEnumerator(minigame));
-        
+        __result = WalkToPadEnumerator(__instance).WrapToIl2Cpp();
         return false;
     }
     

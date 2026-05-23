@@ -11,17 +11,18 @@ namespace BetterOtherRoles.Patches;
 public static class InputManagerBasePatches
 {
     [HarmonyPatch(nameof(InputManager_Base.Awake))]
-    [HarmonyPrefix]
-    private static void AwakePrefix(InputManager_Base __instance)
+    [HarmonyPostfix]
+    private static void AwakePostfix(InputManager_Base __instance)
     {
-        __instance.userData.RegisterBind("ActionUsePortal", "Use A Portal", KeyboardKeyCode.P);
-        __instance.userData.RegisterBind("ActionZoomOut", "Zoom Out", KeyboardKeyCode.KeypadPlus);
-        __instance.userData.RegisterBind("ActionModifier", "Modifier Ability", KeyboardKeyCode.M);
-        __instance.userData.RegisterBind("ActionPlaceGarlic", "Place Garlic", KeyboardKeyCode.G);
-        __instance.userData.RegisterBind("ActionYoyoAdminTable", "Yoyo Admin Table", KeyboardKeyCode.N);
-        __instance.userData.RegisterBind("ActionDefuseBomb", "Defuse Bomb", KeyboardKeyCode.R);
-        __instance.userData.RegisterBind("ActionTransferBomb", "Transfer sticky Bomb", KeyboardKeyCode.T);
-        __instance.userData.RegisterBind("ActionToggleUpdater", "Toggle mod updater", KeyboardKeyCode.Asterisk);
+        var ud = __instance.userData;
+        if (ud == null || ud.actions == null) return;
+        ud.RegisterBind("ActionUsePortal", "Use A Portal", KeyboardKeyCode.P);
+        ud.RegisterBind("ActionZoomOut", "Zoom Out", KeyboardKeyCode.KeypadPlus);
+        ud.RegisterBind("ActionModifier", "Modifier Ability", KeyboardKeyCode.M);
+        ud.RegisterBind("ActionPlaceGarlic", "Place Garlic", KeyboardKeyCode.G);
+        ud.RegisterBind("ActionYoyoAdminTable", "Yoyo Admin Table", KeyboardKeyCode.N);
+        ud.RegisterBind("ActionDefuseBomb", "Defuse Bomb", KeyboardKeyCode.R);
+        ud.RegisterBind("ActionTransferBomb", "Transfer sticky Bomb", KeyboardKeyCode.T);
     }
     
     private static int RegisterBind(this UserData self, string name, string description, KeyboardKeyCode keycode, int elementIdentifierId = -1, int category = 0, InputActionType type = InputActionType.Button)
